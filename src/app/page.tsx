@@ -1,53 +1,124 @@
-import Link from "next/link";
+"use client";
 
-import { LatestPost } from "~/app/_components/post";
-import { api, HydrateClient } from "~/trpc/server";
+import { BudgetEntryType } from "@prisma/client";
+import { eachMonthOfInterval, format } from "date-fns";
+import { useEffect, useState } from "react";
+import {
+  FaCheck,
+  FaFileInvoice,
+  FaMoneyCheck,
+  FaPiggyBank,
+  FaUpLong,
+} from "react-icons/fa6";
+import { api } from "~/trpc/react";
 
-export default async function Home() {
-  const hello = await api.post.hello({ text: "from tRPC" });
+type BudgetEntrySummary = {
+  name: string;
+  amount: number;
+  entryCount: number;
+  icon: React.ReactNode;
+  type: BudgetEntryType | "SURPLUS";
+};
 
-  void api.post.getLatest.prefetch();
+export default function Home() {
+  const months = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
+  const [selectedMonth, setSelectedMonth] = useState(
+    format(new Date(), "MMMM"),
+  );
+
+  const utils = api.useUtils();
+  const { data: budgetEntries } = api.budgetEntry.readAll.useQuery();
+  const [incomeTotal, setIncomeTotal] = useState(0);
+  const [expsenseTotal, setExpenseTotal] = useState(0);
+  const [budgetSummary, setBudgetSummary] = useState<BudgetEntrySummary[]>();
+  useEffect(() => {
+    const incomeEntries = budgetEntries?.filter(
+      (entry) => entry.type === "INCOME",
+    );
+    const expenseEntries = budgetEntries?.filter(
+      (entry) => entry.type === "EXPENSE",
+    );
+
+    const incomeSummary: BudgetEntrySummary = {
+      name: "Income",
+      amount:
+        incomeEntries?.reduce(
+          (acc, entry) => (acc += parseInt(entry.amount.toString())),
+          0,
+        ) ?? 0,
+      entryCount: incomeEntries?.length ?? 0,
+      icon: <FaMoneyCheck />,
+      type: "INCOME",
+    };
+    const expenseSummary: BudgetEntrySummary = {
+      name: "Expense",
+      amount:
+        expenseEntries?.reduce(
+          (acc, entry) => (acc += parseInt(entry.amount.toString())),
+          0,
+        ) ?? 0,
+      entryCount: expenseEntries?.length ?? 0,
+      icon: <FaFileInvoice />,
+      type: "EXPENSE",
+    };
+    const surplusSummary: BudgetEntrySummary = {
+      name: "Surplus",
+      amount: incomeSummary.amount - expenseSummary.amount,
+      entryCount: 0,
+      icon: <FaUpLong />,
+      type: "SURPLUS",
+    };
+    setBudgetSummary([incomeSummary, expenseSummary, surplusSummary]);
+  }, [budgetEntries]);
 
   return (
-    <HydrateClient>
-      <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
-        <div className="container flex flex-col items-center justify-center gap-12 px-4 py-16">
-          <h1 className="text-5xl font-extrabold tracking-tight sm:text-[5rem]">
-            Create <span className="text-[hsl(280,100%,70%)]">T3</span> App
-          </h1>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-8">
-            <Link
-              className="flex max-w-xs flex-col gap-4 rounded-xl bg-white/10 p-4 hover:bg-white/20"
-              href="https://create.t3.gg/en/usage/first-steps"
-              target="_blank"
-            >
-              <h3 className="text-2xl font-bold">First Steps →</h3>
-              <div className="text-lg">
-                Just the basics - Everything you need to know to set up your
-                database and authentication.
-              </div>
-            </Link>
-            <Link
-              className="flex max-w-xs flex-col gap-4 rounded-xl bg-white/10 p-4 hover:bg-white/20"
-              href="https://create.t3.gg/en/introduction"
-              target="_blank"
-            >
-              <h3 className="text-2xl font-bold">Documentation →</h3>
-              <div className="text-lg">
-                Learn more about Create T3 App, the libraries it uses, and how
-                to deploy it.
-              </div>
-            </Link>
-          </div>
-          <div className="flex flex-col items-center gap-2">
-            <p className="text-2xl text-white">
-              {hello ? hello.greeting : "Loading tRPC query..."}
-            </p>
-          </div>
+    <div className="container mx-auto mt-2 flex flex-col gap-4">
+      <select
+        value={selectedMonth}
+        onChange={(e) => setSelectedMonth(e.target.value)}
+        className="h-10"
+      >
+        {months.map((month) => (
+          <option key={month} value={month}>
+            {month}
+          </option>
+        ))}
+      </select>
 
-          <LatestPost />
-        </div>
-      </main>
-    </HydrateClient>
+      <div className="grid grid-cols-1 justify-center gap-2 sm:grid-cols-3">
+        {budgetSummary?.map((summary) => (
+          <button
+            key={summary.name}
+            type="button"
+            className={`flex min-w-[150px] flex-col rounded-lg ${summary.type === "INCOME" ? "bg-emerald-500" : summary.type === "EXPENSE" ? "bg-red-500" : "bg-yellow-500"} p-2`}
+          >
+            <h5 className="flex items-center justify-between uppercase text-gray-300">
+              {summary.name} {summary.icon}
+            </h5>
+            <div className="flex flex-col items-center justify-between">
+              <h3 className="my-2">${summary.amount}</h3>
+              {summary.type !== "SURPLUS" && (
+                <span className="rounded bg-gray-800/80 p-1 text-sm">
+                  {summary.entryCount} entries
+                </span>
+              )}
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
