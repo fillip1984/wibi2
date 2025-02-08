@@ -1,15 +1,9 @@
 "use client";
 
-import { BudgetEntryType } from "@prisma/client";
-import { eachMonthOfInterval, format } from "date-fns";
+import { type BudgetEntryType } from "@prisma/client";
+import { format } from "date-fns";
 import { useEffect, useState } from "react";
-import {
-  FaCheck,
-  FaFileInvoice,
-  FaMoneyCheck,
-  FaPiggyBank,
-  FaUpLong,
-} from "react-icons/fa6";
+import { FaFileInvoice, FaMoneyCheck, FaUpLong } from "react-icons/fa6";
 import { api } from "~/trpc/react";
 
 type BudgetEntrySummary = {
@@ -39,10 +33,7 @@ export default function Home() {
     format(new Date(), "MMMM"),
   );
 
-  const utils = api.useUtils();
   const { data: budgetEntries } = api.budgetEntry.readAll.useQuery();
-  const [incomeTotal, setIncomeTotal] = useState(0);
-  const [expsenseTotal, setExpenseTotal] = useState(0);
   const [budgetSummary, setBudgetSummary] = useState<BudgetEntrySummary[]>();
   useEffect(() => {
     const incomeEntries = budgetEntries?.filter(
@@ -89,8 +80,7 @@ export default function Home() {
       <select
         value={selectedMonth}
         onChange={(e) => setSelectedMonth(e.target.value)}
-        className="h-10"
-      >
+        className="h-10">
         {months.map((month) => (
           <option key={month} value={month}>
             {month}
@@ -103,19 +93,12 @@ export default function Home() {
           <button
             key={summary.name}
             type="button"
-            className={`flex min-w-[150px] flex-col rounded-lg ${summary.type === "INCOME" ? "bg-emerald-500" : summary.type === "EXPENSE" ? "bg-red-500" : "bg-yellow-500"} p-2`}
-          >
-            <h5 className="flex items-center justify-between uppercase text-gray-300">
-              {summary.name} {summary.icon}
+            className={`flex flex-col items-center rounded-lg ${summary.type === "INCOME" ? "bg-emerald-500" : summary.type === "EXPENSE" ? "bg-red-500" : "bg-yellow-500"} `}>
+            <h5 className="flex w-full items-center justify-between bg-gray-800/30 px-2 uppercase text-gray-300">
+              {summary.name}
+              {summary.icon}
             </h5>
-            <div className="flex flex-col items-center justify-between">
-              <h3 className="my-2">${summary.amount}</h3>
-              {summary.type !== "SURPLUS" && (
-                <span className="rounded bg-gray-800/80 p-1 text-sm">
-                  {summary.entryCount} entries
-                </span>
-              )}
-            </div>
+            <h2 className="my-2">${summary.amount}</h2>
           </button>
         ))}
       </div>
