@@ -10,12 +10,23 @@ datasource db {
     url      = env("DATABASE_URL")
 }
 
+model BudgetCategory {
+    id          String             @id @default(cuid())
+    name        String
+    description String
+    type        BudgetCategoryType
+
+    entries BudgetEntry[]
+}
+
 model BudgetEntry {
-    id        String          @id @default(cuid())
+    id        String    @id @default(cuid())
     name      String
-    amount    Decimal         @db.Money
+    amount    Decimal   @db.Money
     frequency Frequency
-    type      BudgetEntryType
+
+    budgetCategory   BudgetCategory @relation(fields: [budgetCategoryId], references: [id])
+    budgetCategoryId String
 }
 
 enum Frequency {
@@ -28,7 +39,7 @@ enum Frequency {
     YEARLY
 }
 
-enum BudgetEntryType {
+enum BudgetCategoryType {
     INCOME
     EXPENSE
 }

@@ -1,24 +1,25 @@
-import { Frequency } from "@prisma/client";
+import { BudgetCategoryType } from "@prisma/client";
 import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
 
-export const budgetEntry = createTRPCRouter({
+export const budgetCategory = createTRPCRouter({
   create: publicProcedure
     .input(
       z.object({
         name: z.string(),
-        amount: z.number(),
-        frequency: z.nativeEnum(Frequency),
-        budgetCategoryId: z.string(),
+        description: z.string(),
+        type: z.nativeEnum(BudgetCategoryType),
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      return await ctx.db.budgetEntry.create({
+      return await ctx.db.budgetCategory.create({
         data: input,
       });
     }),
   readAll: publicProcedure.query(async ({ ctx }) => {
-    return await ctx.db.budgetEntry.findMany();
+    return await ctx.db.budgetCategory.findMany({
+      orderBy: [{ type: "asc" }, { name: "asc" }],
+    });
   }),
   read: publicProcedure
     .input(
@@ -27,7 +28,7 @@ export const budgetEntry = createTRPCRouter({
       }),
     )
     .query(async ({ input, ctx }) => {
-      return await ctx.db.budgetEntry.findUnique({
+      return await ctx.db.budgetCategory.findUnique({
         where: { id: input.id },
       });
     }),
@@ -36,13 +37,12 @@ export const budgetEntry = createTRPCRouter({
       z.object({
         id: z.string(),
         name: z.string().optional(),
-        amount: z.number().optional(),
-        frequency: z.nativeEnum(Frequency),
-        budgetCategoryId: z.string(),
+        description: z.string().optional(),
+        type: z.nativeEnum(BudgetCategoryType),
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      return await ctx.db.budgetEntry.update({
+      return await ctx.db.budgetCategory.update({
         where: { id: input.id },
         data: input,
       });
@@ -54,7 +54,7 @@ export const budgetEntry = createTRPCRouter({
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      return await ctx.db.budgetEntry.delete({
+      return await ctx.db.budgetCategory.delete({
         where: { id: input.id },
       });
     }),
