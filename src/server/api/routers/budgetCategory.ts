@@ -19,6 +19,7 @@ export const budgetCategory = createTRPCRouter({
   readAll: publicProcedure.query(async ({ ctx }) => {
     return await ctx.db.budgetCategory.findMany({
       orderBy: [{ type: "asc" }, { name: "asc" }],
+      include: { entries: true },
     });
   }),
   read: publicProcedure

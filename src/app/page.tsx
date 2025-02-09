@@ -1,21 +1,19 @@
 "use client";
 
-import { type BudgetCategory, type BudgetCategoryType } from "@prisma/client";
+import { type BudgetCategoryType, type Frequency } from "@prisma/client";
 import { format } from "date-fns";
 import { type Dispatch, type SetStateAction, useEffect, useState } from "react";
-import { createPortal } from "react-dom";
-import { FaFileInvoice, FaMoneyCheck, FaPlus, FaUpLong } from "react-icons/fa6";
+import { FaFileInvoice, FaMoneyCheck, FaUpLong } from "react-icons/fa6";
+import { api, type RouterOutputs } from "~/trpc/react";
 
-import { api } from "~/trpc/react";
-import Modal from "./_components/shared/Modal";
-
-type BudgetSummaryType = {
-  name: string;
-  amount: number;
-  entryCount: number;
-  icon: React.ReactNode;
+export type BudgetSummaryType = {
   type: BudgetCategoryType | "SURPLUS";
+  amount: number;
+  icon: React.ReactNode;
 };
+
+type BudgetCategoryAndEntries =
+  RouterOutputs["budgetCategory"]["readAll"][number];
 
 export default function Home() {
   const [selectedMonth, setSelectedMonth] = useState(
@@ -33,31 +31,33 @@ export default function Home() {
     );
 
     const incomeSummary: BudgetSummaryType = {
-      name: "Income",
-      amount: 0,
-      // incomeCategories?.reduce(
-      //   (acc, cat) => (acc += parseInt(entry.amount.toString())),
-      //   0,
-      // ) ?? 0,
-      entryCount: incomeCategories?.length ?? 0,
-      icon: <FaMoneyCheck />,
+      amount:
+        incomeCategories?.reduce(
+          (total, category) =>
+            (total += category.entries.reduce(
+              (acc, entry) => (acc += parseInt(entry.amount.toString())),
+              0,
+            )),
+          0,
+        ) ?? 0,
       type: "INCOME",
+      icon: <FaMoneyCheck />,
     };
     const expenseSummary: BudgetSummaryType = {
-      name: "Expense",
-      amount: 0,
-      // expenseCategories?.reduce(
-      //   (acc, entry) => (acc += parseInt(entry.amount.toString())),
-      //   0,
-      // ) ?? 0,
-      entryCount: expenseCategories?.length ?? 0,
+      amount:
+        expenseCategories?.reduce(
+          (total, category) =>
+            (total += category.entries.reduce(
+              (acc, entry) => (acc += parseInt(entry.amount.toString())),
+              0,
+            )),
+          0,
+        ) ?? 0,
       icon: <FaFileInvoice />,
       type: "EXPENSE",
     };
     const surplusSummary: BudgetSummaryType = {
-      name: "Surplus",
       amount: incomeSummary.amount - expenseSummary.amount,
-      entryCount: 0,
       icon: <FaUpLong />,
       type: "SURPLUS",
     };
@@ -100,31 +100,52 @@ const Heading = ({
     "December",
   ];
 
+  const handleImport = () => {
+    console.log("importing...");
+  };
+
+  const handleExport = () => {
+    console.log("exporting...");
+  };
+
   return (
     <div className="flex flex-col gap-2 px-4">
       <div className="grid grid-cols-3 justify-center gap-2">
         {budgetSummary?.map((summary) => (
           <button
-            key={summary.name}
+            key={summary.type}
             type="button"
             className={`flex flex-col items-center rounded-lg ${summary.type === "INCOME" ? "bg-emerald-500" : summary.type === "EXPENSE" ? "bg-red-500" : "bg-yellow-500"} `}>
-            <h5 className="flex w-full items-center justify-between bg-gray-800/20 px-2 uppercase text-gray-300">
-              {summary.name}
+            <h5 className="flex w-full items-center justify-between px-2 text-black uppercase">
+              {summary.type}
               {summary.icon}
             </h5>
             <p className={`my-2 text-4xl sm:text-6xl`}>${summary.amount}</p>
           </button>
         ))}
       </div>
-      <select
-        value={selectedMonth}
-        onChange={(e) => setSelectedMonth(e.target.value)}>
-        {months.map((month) => (
-          <option key={month} value={month}>
-            {month}
-          </option>
-        ))}
-      </select>
+      <div className="flex justify-center gap-2">
+        <select
+          value={selectedMonth}
+          onChange={(e) => setSelectedMonth(e.target.value)}
+          className="h-10">
+          {months.map((month) => (
+            <option key={month} value={month}>
+              {month}
+            </option>
+          ))}
+        </select>
+        <button
+          onClick={handleImport}
+          className="rounded border border-yellow-500 px-4 py-2 text-yellow-500">
+          Import
+        </button>
+        <button
+          onClick={handleExport}
+          className="rounded border border-yellow-500 px-4 py-2 text-yellow-500">
+          Export
+        </button>
+      </div>
     </div>
   );
 };
@@ -132,7 +153,7 @@ const Heading = ({
 const BudgetCategoriesView = ({
   budgetCategories,
 }: {
-  budgetCategories: BudgetCategory[] | undefined;
+  budgetCategories: BudgetCategoryAndEntries[] | undefined;
 }) => {
   const utils = api.useUtils();
   // const { mutate: deleteBudgetCategory } =
@@ -217,35 +238,161 @@ const BudgetCategoriesView = ({
     });
   };
 
+  const [budgetCategoryToEdit, setBudgetCategoryToEdit] =
+    useState<BudgetCategoryAndEntries | null>(null);
+
   return (
-    <div className="flex flex-col gap-2 p-4">
-      {budgetCategories?.length === 0 && (
-        <div className="flex flex-col items-center justify-center">
-          There are no budget categories...{" "}
+    <>
+      <div className="flex flex-col gap-2 p-4">
+        {budgetCategories?.length === 0 && (
+          <div className="flex flex-col items-center justify-center">
+            There are no budget categories...{" "}
+            <button
+              type="button"
+              onClick={handleLoadDefaults}
+              className="rounded bg-emerald-500 px-4 py-2">
+              Load defaults?
+            </button>
+          </div>
+        )}
+        {budgetCategories?.map((category) => (
           <button
-            type="button"
-            onClick={handleLoadDefaults}
-            className="rounded bg-emerald-500 px-4 py-2">
-            Load defaults?
+            key={category.id}
+            onClick={() => setBudgetCategoryToEdit(category)}
+            className="flex items-center justify-between rounded bg-stone-700 p-1">
+            <div className="flex flex-col items-start">
+              <span>{category.name}</span>
+              <span className="text-left text-xs text-gray-400">
+                {category.description}
+              </span>
+            </div>
+            <h4
+              className={`${category.type === "INCOME" ? "text-green-400" : "text-red-400"}`}>
+              $
+              {category.entries.reduce(
+                (acc, entry) => (acc += parseInt(entry.amount.toString())),
+                0,
+              )}
+            </h4>
+            {/* <button type="button" onClick={() => handleDelete(category.id)}>
+            <FaTrash />
+          </button> */}
           </button>
+        ))}
+        <AddBudgetCategory />
+      </div>
+
+      {budgetCategoryToEdit && (
+        <div className="fixed inset-0 flex items-center justify-center">
+          {/* backdrop */}
+          <div
+            onClick={() => setBudgetCategoryToEdit(null)}
+            className="fixed inset-0 z-40 bg-black/30"></div>
+
+          {/* modal container */}
+          <div className="z-50 h-1/2 w-3/4 bg-stone-600">
+            <EditBudgetCategory budgetCategory={budgetCategoryToEdit} />
+          </div>
         </div>
       )}
-      {budgetCategories?.map((category) => (
-        <BudgetCategoryRow key={category.id} category={category} />
-      ))}
+    </>
+  );
+};
 
-      {isAddBudgetCategoryVisible ? (
-        <AddBudgetCategory
-          dismiss={() => setIsAddBudgetCategoryVisible(false)}
+const EditBudgetCategory = ({
+  budgetCategory,
+}: {
+  budgetCategory: BudgetCategoryAndEntries;
+}) => {
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [amount, setAmount] = useState(0);
+  useEffect(() => {
+    setName(budgetCategory.name);
+    setDescription(budgetCategory.description);
+    setAmount(
+      budgetCategory.entries.reduce(
+        (acc, entry) => (acc += parseInt(entry.amount.toString())),
+        0,
+      ),
+    );
+  }, [budgetCategory]);
+
+  const [entry, setEntry] = useState("");
+  const [entryAmount, setEntryAmount] = useState("");
+  const [entryFrequency, setEntryFrequency] = useState("");
+  const utils = api.useUtils();
+  const { mutate: addBudgetEntry } = api.budgetEntry.create.useMutation({
+    onSuccess: async () => {
+      await utils.budgetEntry.readAll.invalidate();
+      await utils.budgetCategory.readAll.invalidate();
+      setEntry("");
+      setEntryAmount("");
+      setEntryFrequency("");
+    },
+  });
+  const handleAddEntry = () => {
+    addBudgetEntry({
+      name: entry,
+      amount: parseInt(entryAmount),
+      frequency: entryFrequency as Frequency,
+      budgetCategoryId: budgetCategory.id,
+    });
+  };
+
+  return (
+    <div className="flex flex-col gap-2 p-2">
+      <h5>Budget Category</h5>
+      <input
+        type="text"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+      />
+      <textarea
+        value={description}
+        onChange={(e) => setName(e.target.value)}></textarea>
+      <span>${amount}</span>
+
+      <h5>Entries</h5>
+      {budgetCategory.entries.map((entry) => (
+        <div key={entry.id} className="flex items-center justify-between">
+          <div className="flex flex-col">
+            <span>{entry.name}</span>
+            <span className="text-xs text-gray-400">{entry.frequency}</span>
+          </div>
+          <span>${entry.amount.toString()}</span>
+        </div>
+      ))}
+      <input
+        type="text"
+        value={entry}
+        onChange={(e) => setEntry(e.target.value)}
+        placeholder="Entry name..."
+      />
+      <div className="flex gap-2">
+        <input
+          type="number"
+          value={entryAmount}
+          onChange={(e) => setEntryAmount(e.target.value)}
+          placeholder="Entry amount..."
         />
-      ) : (
-        <button
-          type="button"
-          onClick={() => setIsAddBudgetCategoryVisible(true)}
-          className="flex items-center gap-2">
-          <FaPlus className="text-emerald-400" /> Add Budget Category
-        </button>
-      )}
+        <select
+          value={entryFrequency}
+          onChange={(e) => setEntryFrequency(e.target.value)}>
+          <option value="">How often?</option>
+          <option value="WEEKLY">Weekly</option>
+          <option value="BIWEEKLY">Biweekly</option>
+          <option value="MONTHLY">Monthly</option>
+          <option value="BIMONTHLY">Bimonthly</option>
+          <option value="QUARTERLY">Quarterly</option>
+          <option value="YEARLY">Yearly</option>
+        </select>
+      </div>
+      <button
+        onClick={handleAddEntry}
+        className="rounded bg-emerald-600 px-4 py-2">
+        Add
+      </button>
     </div>
   );
 };
