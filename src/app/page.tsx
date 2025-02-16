@@ -3,8 +3,11 @@
 import { type BudgetCategory, type BudgetCategoryType } from "@prisma/client";
 import { format } from "date-fns";
 import { type Dispatch, type SetStateAction, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { FaFileInvoice, FaMoneyCheck, FaPlus, FaUpLong } from "react-icons/fa6";
+
 import { api } from "~/trpc/react";
+import Modal from "./_components/shared/Modal";
 
 type BudgetSummaryType = {
   name: string;
@@ -132,19 +135,18 @@ const BudgetCategoriesView = ({
   budgetCategories: BudgetCategory[] | undefined;
 }) => {
   const utils = api.useUtils();
-  const { mutate: deleteBudgetCategory } =
-    api.budgetCategory.delete.useMutation({
-      onSuccess: async () => {
-        await utils.budgetCategory.readAll.invalidate();
-      },
-    });
-  const handleDelete = (id: string) => {
-    deleteBudgetCategory({ id });
-  };
+  // const { mutate: deleteBudgetCategory } =
+  //   api.budgetCategory.delete.useMutation({
+  //     onSuccess: async () => {
+  //       await utils.budgetCategory.readAll.invalidate();
+  //     },
+  //   });
+  // const handleDelete = (id: string) => {
+  //   deleteBudgetCategory({ id });
+  // };
 
   const [isAddBudgetCategoryVisible, setIsAddBudgetCategoryVisible] =
     useState(false);
-
   const { mutate: addBudgetCategory } = api.budgetCategory.create.useMutation({
     onSuccess: async () => {
       await utils.budgetCategory.readAll.invalidate();
@@ -229,23 +231,7 @@ const BudgetCategoriesView = ({
         </div>
       )}
       {budgetCategories?.map((category) => (
-        <div
-          key={category.id}
-          className="flex items-center justify-between rounded bg-stone-700 p-1">
-          <div className="flex flex-col">
-            <span>{category.name}</span>
-            <span className="text-xs text-gray-400">
-              {category.description}
-            </span>
-          </div>
-          <h4
-            className={`${category.type === "INCOME" ? "text-green-400" : "text-red-400"}`}>
-            $0
-          </h4>
-          {/* <button type="button" onClick={() => handleDelete(category.id)}>
-            <FaTrash />
-          </button> */}
-        </div>
+        <BudgetCategoryRow key={category.id} category={category} />
       ))}
 
       {isAddBudgetCategoryVisible ? (
@@ -262,6 +248,48 @@ const BudgetCategoriesView = ({
       )}
     </div>
   );
+};
+
+const BudgetCategoryRow = ({ category }: { category: BudgetCategory }) => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setIsModalOpen(true)}
+        className="flex items-center justify-between rounded bg-stone-700 p-1">
+        <div className="flex flex-col text-left">
+          <span>{category.name}</span>
+          <span className="text-xs text-gray-400">{category.description}</span>
+        </div>
+        <h4
+          className={`${category.type === "INCOME" ? "text-green-400" : "text-red-400"}`}>
+          $0
+        </h4>
+        {/* <button type="button" onClick={() => handleDelete(category.id)}>
+    <FaTrash />
+  </button> */}
+      </button>
+
+      {/* <Modal
+        isOpen={isModalOpen}
+        onRequestClose={() => setIsModalOpen(false)}
+        ariaHideApp={false}
+        shouldCloseOnOverlayClick={true}>
+        Hello
+      </Modal> */}
+
+      {/* {isModalOpen && createPortal(<div>Hello</div>, document.body)} */}
+      <Modal isOpen={isModalOpen} close={() => setIsModalOpen(false)}>
+        <div>Hello</div>
+      </Modal>
+    </>
+  );
+};
+
+const BudgetCategoryModal = () => {
+  return <div>Modal</div>;
 };
 
 const AddBudgetCategory = ({ dismiss }: { dismiss: () => void }) => {
