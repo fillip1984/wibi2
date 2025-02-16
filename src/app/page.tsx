@@ -3,10 +3,10 @@
 import { type BudgetCategory, type BudgetCategoryType } from "@prisma/client";
 import { format } from "date-fns";
 import { type Dispatch, type SetStateAction, useEffect, useState } from "react";
-import { FaFileInvoice, FaMoneyCheck, FaUpLong } from "react-icons/fa6";
+import { FaFileInvoice, FaMoneyCheck, FaPlus, FaUpLong } from "react-icons/fa6";
 import { api } from "~/trpc/react";
 
-export type BudgetSummaryType = {
+type BudgetSummaryType = {
   name: string;
   amount: number;
   entryCount: number;
@@ -105,7 +105,7 @@ const Heading = ({
             key={summary.name}
             type="button"
             className={`flex flex-col items-center rounded-lg ${summary.type === "INCOME" ? "bg-emerald-500" : summary.type === "EXPENSE" ? "bg-red-500" : "bg-yellow-500"} `}>
-            <h5 className="flex w-full items-center justify-between bg-gray-800/20 px-2 text-gray-300 uppercase">
+            <h5 className="flex w-full items-center justify-between bg-gray-800/20 px-2 uppercase text-gray-300">
               {summary.name}
               {summary.icon}
             </h5>
@@ -115,8 +115,7 @@ const Heading = ({
       </div>
       <select
         value={selectedMonth}
-        onChange={(e) => setSelectedMonth(e.target.value)}
-        className="h-10">
+        onChange={(e) => setSelectedMonth(e.target.value)}>
         {months.map((month) => (
           <option key={month} value={month}>
             {month}
@@ -142,6 +141,9 @@ const BudgetCategoriesView = ({
   const handleDelete = (id: string) => {
     deleteBudgetCategory({ id });
   };
+
+  const [isAddBudgetCategoryVisible, setIsAddBudgetCategoryVisible] =
+    useState(false);
 
   const { mutate: addBudgetCategory } = api.budgetCategory.create.useMutation({
     onSuccess: async () => {
@@ -245,12 +247,24 @@ const BudgetCategoriesView = ({
           </button> */}
         </div>
       ))}
-      <AddBudgetCategory />
+
+      {isAddBudgetCategoryVisible ? (
+        <AddBudgetCategory
+          dismiss={() => setIsAddBudgetCategoryVisible(false)}
+        />
+      ) : (
+        <button
+          type="button"
+          onClick={() => setIsAddBudgetCategoryVisible(true)}
+          className="flex items-center gap-2">
+          <FaPlus className="text-emerald-400" /> Add Budget Category
+        </button>
+      )}
     </div>
   );
 };
 
-const AddBudgetCategory = () => {
+const AddBudgetCategory = ({ dismiss }: { dismiss: () => void }) => {
   const utils = api.useUtils();
   const { mutate: AddBudgetCategory } = api.budgetCategory.create.useMutation({
     onSuccess: async () => {
@@ -274,22 +288,23 @@ const AddBudgetCategory = () => {
         type="text"
         value={name}
         onChange={(e) => setName(e.target.value)}
-        className="rounded border border-gray-300 bg-transparent p-2"
         placeholder="New budget category..."
       />
       <textarea
         value={description}
         onChange={(e) => setDescription(e.target.value)}
-        className="rounded border border-gray-300 bg-transparent p-2"></textarea>
+        placeholder="Description..."></textarea>
       <select
         value={type}
-        onChange={(e) => setType(e.target.value as BudgetCategoryType)}
-        className="rounded border border-gray-300 bg-transparent p-2">
+        onChange={(e) => setType(e.target.value as BudgetCategoryType)}>
         <option value="EXPENSE">Expense</option>
         <option value="INCOME">Income</option>
       </select>
       <button onClick={handleAdd} className="rounded bg-emerald-500 p-2">
         Add
+      </button>
+      <button type="button" onClick={dismiss} className="rounded border p-2">
+        Cancel
       </button>
     </div>
   );

@@ -1,14 +1,15 @@
 import { type Config } from "tailwindcss";
-import defaultTheme from "tailwindcss/defaultTheme";
+import { fontFamily } from "tailwindcss/defaultTheme";
+import tailwindcssForms from "@tailwindcss/forms";
 
 export default {
-  content: ["./src/app/*.tsx"],
+  content: ["./src/app/**/*.tsx"],
   theme: {
     extend: {
       fontFamily: {
-        sans: ["var(--font-geist-sans)", ...defaultTheme.fontFamily.sans],
+        sans: ["var(--font-geist-sans)", ...fontFamily.sans],
       },
     },
   },
-  plugins: [],
+  plugins: [tailwindcssForms],
 } satisfies Config;

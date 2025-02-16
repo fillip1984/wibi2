@@ -1,4 +1,6 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 @layer base {
   h1 {
@@ -19,5 +21,29 @@
 
   h5 {
     @apply text-xl;
+  }
+
+  input[type="text"],
+  input[type="password"],
+  input[type="email"],
+  input[type="number"],
+  input[type="url"],
+  input[type="date"],
+  input[type="datetime-local"],
+  input[type="month"],
+  input[type="week"],
+  input[type="time"],
+  input[type="search"],
+  input[type="tel"],
+  input[type="checkbox"],
+  input[type="radio"],
+  select,
+  select[multiple],
+  textarea {
+    @apply rounded border-white/50 bg-transparent ring-0 focus:border-white focus:ring-0;
+  }
+
+  select {
+    @apply bg-stone-600;
   }
 }
