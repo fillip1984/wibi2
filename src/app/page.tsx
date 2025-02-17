@@ -1,10 +1,15 @@
 "use client";
 
-import { type BudgetCategoryType, type Frequency } from "@prisma/client";
+import {
+  type BudgetCategory,
+  type BudgetCategoryType,
+  type Frequency,
+} from "@prisma/client";
 import { format } from "date-fns";
 import { type Dispatch, type SetStateAction, useEffect, useState } from "react";
-import { FaFileInvoice, FaMoneyCheck, FaUpLong } from "react-icons/fa6";
+import { FaFileInvoice, FaMoneyCheck, FaPlus, FaUpLong } from "react-icons/fa6";
 import { api, type RouterOutputs } from "~/trpc/react";
+import Modal from "./_components/shared/Modal";
 
 export type BudgetSummaryType = {
   type: BudgetCategoryType | "SURPLUS";
@@ -116,11 +121,11 @@ const Heading = ({
             key={summary.type}
             type="button"
             className={`flex flex-col items-center rounded-lg ${summary.type === "INCOME" ? "bg-emerald-500" : summary.type === "EXPENSE" ? "bg-red-500" : "bg-yellow-500"} `}>
-            <h5 className="flex w-full items-center justify-between px-2 text-black uppercase">
+            <h5 className="flex w-full items-center justify-between px-2 uppercase text-black">
               {summary.type}
               {summary.icon}
             </h5>
-            <p className={`my-2 text-4xl sm:text-6xl`}>${summary.amount}</p>
+            <p className={`my-2 text-3xl sm:text-4xl`}>${summary.amount}</p>
           </button>
         ))}
       </div>
@@ -238,9 +243,6 @@ const BudgetCategoriesView = ({
     });
   };
 
-  const [budgetCategoryToEdit, setBudgetCategoryToEdit] =
-    useState<BudgetCategoryAndEntries | null>(null);
-
   return (
     <>
       <div className="flex flex-col gap-2 p-4">
@@ -256,45 +258,23 @@ const BudgetCategoriesView = ({
           </div>
         )}
         {budgetCategories?.map((category) => (
-          <button
-            key={category.id}
-            onClick={() => setBudgetCategoryToEdit(category)}
-            className="flex items-center justify-between rounded bg-stone-700 p-1">
-            <div className="flex flex-col items-start">
-              <span>{category.name}</span>
-              <span className="text-left text-xs text-gray-400">
-                {category.description}
-              </span>
-            </div>
-            <h4
-              className={`${category.type === "INCOME" ? "text-green-400" : "text-red-400"}`}>
-              $
-              {category.entries.reduce(
-                (acc, entry) => (acc += parseInt(entry.amount.toString())),
-                0,
-              )}
-            </h4>
-            {/* <button type="button" onClick={() => handleDelete(category.id)}>
-            <FaTrash />
-          </button> */}
-          </button>
+          <BudgetCategoryRow key={category.id} category={category} />
         ))}
-        <AddBudgetCategory />
+
+        {isAddBudgetCategoryVisible ? (
+          <AddBudgetCategory
+            dismiss={() => setIsAddBudgetCategoryVisible(false)}
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={() => setIsAddBudgetCategoryVisible(true)}
+            className="flex items-center gap-2">
+            <FaPlus className="text-emerald-400" />
+            Add Budget Category
+          </button>
+        )}
       </div>
-
-      {budgetCategoryToEdit && (
-        <div className="fixed inset-0 flex items-center justify-center">
-          {/* backdrop */}
-          <div
-            onClick={() => setBudgetCategoryToEdit(null)}
-            className="fixed inset-0 z-40 bg-black/30"></div>
-
-          {/* modal container */}
-          <div className="z-50 h-1/2 w-3/4 bg-stone-600">
-            <EditBudgetCategory budgetCategory={budgetCategoryToEdit} />
-          </div>
-        </div>
-      )}
     </>
   );
 };
@@ -397,51 +377,48 @@ const EditBudgetCategory = ({
   );
 };
 
-const BudgetCategoryRow = ({ category }: { category: BudgetCategory }) => {
+const BudgetCategoryRow = ({
+  category,
+}: {
+  category: BudgetCategoryAndEntries;
+}) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   return (
     <>
       <button
-        type="button"
+        key={category.id}
         onClick={() => setIsModalOpen(true)}
         className="flex items-center justify-between rounded bg-stone-700 p-1">
-        <div className="flex flex-col text-left">
+        <div className="flex flex-col items-start">
           <span>{category.name}</span>
-          <span className="text-xs text-gray-400">{category.description}</span>
+          <span className="text-left text-xs text-gray-400">
+            {category.description}
+          </span>
         </div>
         <h4
           className={`${category.type === "INCOME" ? "text-green-400" : "text-red-400"}`}>
-          $0
+          $
+          {category.entries.reduce(
+            (acc, entry) => (acc += parseInt(entry.amount.toString())),
+            0,
+          )}
         </h4>
         {/* <button type="button" onClick={() => handleDelete(category.id)}>
-    <FaTrash />
-  </button> */}
+            <FaTrash />
+          </button> */}
       </button>
 
-      {/* <Modal
-        isOpen={isModalOpen}
-        onRequestClose={() => setIsModalOpen(false)}
-        ariaHideApp={false}
-        shouldCloseOnOverlayClick={true}>
-        Hello
-      </Modal> */}
-
-      {/* {isModalOpen && createPortal(<div>Hello</div>, document.body)} */}
       <Modal isOpen={isModalOpen} close={() => setIsModalOpen(false)}>
-        <div>Hello</div>
+        <EditBudgetCategory budgetCategory={category} />
       </Modal>
     </>
   );
 };
 
-const BudgetCategoryModal = () => {
-  return <div>Modal</div>;
-};
-
 const AddBudgetCategory = ({ dismiss }: { dismiss: () => void }) => {
   const utils = api.useUtils();
-  const { mutate: AddBudgetCategory } = api.budgetCategory.create.useMutation({
+  const { mutate: addBudgetCategory } = api.budgetCategory.create.useMutation({
     onSuccess: async () => {
       await utils.budgetCategory.readAll.invalidate();
       setName("");
@@ -450,7 +427,7 @@ const AddBudgetCategory = ({ dismiss }: { dismiss: () => void }) => {
     },
   });
   const handleAdd = () => {
-    AddBudgetCategory({ name, description, type });
+    addBudgetCategory({ name, description, type });
   };
 
   const [name, setName] = useState("");

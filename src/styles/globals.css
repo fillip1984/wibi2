@@ -37,7 +37,7 @@
   [multiple],
   textarea,
   select {
-    @apply w-full rounded border bg-transparent p-2 text-white focus:border-black focus:ring-black;
+    @apply w-full rounded border border-white bg-transparent p-2 text-white focus:border-black focus:ring-black;
   }
 
   input:disabled,

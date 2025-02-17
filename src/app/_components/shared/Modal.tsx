@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect } from "react";
-import { createPortal } from "react-dom";
+import useScrollbarSize from "react-scrollbar-size";
 
 export default function Modal({
   isOpen,
@@ -11,15 +11,16 @@ export default function Modal({
   close: () => void;
   children: React.ReactNode;
 }) {
+  const { width } = useScrollbarSize();
   // prevent body from being scrollable while modal is present
   // See: https://stackoverflow.com/questions/54989513/react-prevent-scroll-when-modal-is-open
   useEffect(() => {
     if (isOpen) {
-      document.body.classList.add("overflow-hidden", "pr-[15px]");
+      document.body.classList.add("overflow-hidden", `pr-[${width}px]`);
     } else {
-      document.body.classList.remove("overflow-hidden", "pr-[15px]");
+      document.body.classList.remove("overflow-hidden", `pr-[${width}px]`);
     }
-  }, [isOpen]);
+  }, [isOpen, width]);
 
   if (!isOpen) {
     return null;
@@ -40,7 +41,7 @@ export default function Modal({
             initial={{ opacity: 0, scale: 0 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0 }}
-            className="z-[1001] h-1/2 w-1/3 rounded-xl bg-stone-600">
+            className="z-[1001] rounded-xl bg-stone-600">
             {children}
           </motion.div>
         </div>
