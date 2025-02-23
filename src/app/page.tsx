@@ -1,24 +1,13 @@
 "use client";
 
-import {
-  type BudgetCategory,
-  type BudgetCategoryType,
-  type Frequency,
-} from "@prisma/client";
+import { type BudgetCategoryType } from "@prisma/client";
 import { format } from "date-fns";
 import { type Dispatch, type SetStateAction, useEffect, useState } from "react";
 import { FaFileInvoice, FaMoneyCheck, FaPlus, FaUpLong } from "react-icons/fa6";
-import { api, type RouterOutputs } from "~/trpc/react";
+import { api } from "~/trpc/react";
+import { BudgetCategoryAndEntries, BudgetSummaryType } from "~/trpc/types";
+import EditBudgetCategoryModal from "./_components/EditBudgetCategoryModal";
 import Modal from "./_components/shared/Modal";
-
-export type BudgetSummaryType = {
-  type: BudgetCategoryType | "SURPLUS";
-  amount: number;
-  icon: React.ReactNode;
-};
-
-type BudgetCategoryAndEntries =
-  RouterOutputs["budgetCategory"]["readAll"][number];
 
 export default function Home() {
   const [selectedMonth, setSelectedMonth] = useState(
@@ -161,15 +150,6 @@ const BudgetCategoriesView = ({
   budgetCategories: BudgetCategoryAndEntries[] | undefined;
 }) => {
   const utils = api.useUtils();
-  // const { mutate: deleteBudgetCategory } =
-  //   api.budgetCategory.delete.useMutation({
-  //     onSuccess: async () => {
-  //       await utils.budgetCategory.readAll.invalidate();
-  //     },
-  //   });
-  // const handleDelete = (id: string) => {
-  //   deleteBudgetCategory({ id });
-  // };
 
   const [isAddBudgetCategoryVisible, setIsAddBudgetCategoryVisible] =
     useState(false);
@@ -279,104 +259,6 @@ const BudgetCategoriesView = ({
   );
 };
 
-const EditBudgetCategory = ({
-  budgetCategory,
-}: {
-  budgetCategory: BudgetCategoryAndEntries;
-}) => {
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [amount, setAmount] = useState(0);
-  useEffect(() => {
-    setName(budgetCategory.name);
-    setDescription(budgetCategory.description);
-    setAmount(
-      budgetCategory.entries.reduce(
-        (acc, entry) => (acc += parseInt(entry.amount.toString())),
-        0,
-      ),
-    );
-  }, [budgetCategory]);
-
-  const [entry, setEntry] = useState("");
-  const [entryAmount, setEntryAmount] = useState("");
-  const [entryFrequency, setEntryFrequency] = useState("");
-  const utils = api.useUtils();
-  const { mutate: addBudgetEntry } = api.budgetEntry.create.useMutation({
-    onSuccess: async () => {
-      await utils.budgetEntry.readAll.invalidate();
-      await utils.budgetCategory.readAll.invalidate();
-      setEntry("");
-      setEntryAmount("");
-      setEntryFrequency("");
-    },
-  });
-  const handleAddEntry = () => {
-    addBudgetEntry({
-      name: entry,
-      amount: parseInt(entryAmount),
-      frequency: entryFrequency as Frequency,
-      budgetCategoryId: budgetCategory.id,
-    });
-  };
-
-  return (
-    <div className="flex flex-col gap-2 p-2">
-      <h5>Budget Category</h5>
-      <input
-        type="text"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-      />
-      <textarea
-        value={description}
-        onChange={(e) => setName(e.target.value)}></textarea>
-      <span>${amount}</span>
-
-      <h5>Entries</h5>
-      {budgetCategory.entries.map((entry) => (
-        <div key={entry.id} className="flex items-center justify-between">
-          <div className="flex flex-col">
-            <span>{entry.name}</span>
-            <span className="text-xs text-gray-400">{entry.frequency}</span>
-          </div>
-          <span>${entry.amount.toString()}</span>
-        </div>
-      ))}
-      <input
-        type="text"
-        value={entry}
-        onChange={(e) => setEntry(e.target.value)}
-        placeholder="Entry name..."
-      />
-      <div className="flex gap-2">
-        <input
-          type="number"
-          value={entryAmount}
-          onChange={(e) => setEntryAmount(e.target.value)}
-          placeholder="Entry amount..."
-        />
-        <select
-          value={entryFrequency}
-          onChange={(e) => setEntryFrequency(e.target.value)}>
-          <option value="">How often?</option>
-          <option value="WEEKLY">Weekly</option>
-          <option value="BIWEEKLY">Biweekly</option>
-          <option value="MONTHLY">Monthly</option>
-          <option value="BIMONTHLY">Bimonthly</option>
-          <option value="QUARTERLY">Quarterly</option>
-          <option value="YEARLY">Yearly</option>
-        </select>
-      </div>
-      <button
-        onClick={handleAddEntry}
-        className="rounded bg-emerald-600 px-4 py-2">
-        Add
-      </button>
-    </div>
-  );
-};
-
 const BudgetCategoryRow = ({
   category,
 }: {
@@ -410,7 +292,7 @@ const BudgetCategoryRow = ({
       </button>
 
       <Modal isOpen={isModalOpen} close={() => setIsModalOpen(false)}>
-        <EditBudgetCategory budgetCategory={category} />
+        <EditBudgetCategoryModal budgetCategory={category} />
       </Modal>
     </>
   );
